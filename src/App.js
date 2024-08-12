@@ -1,42 +1,32 @@
 import React, { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-
 import { Button } from "antd";
 import TextArea from "antd/es/input/TextArea";
-import {
-  getAuth,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-} from "firebase/auth";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { auth } from './firebase'; // Utilisation de l'importation existante
 
 function PhoneSign() {
   const [phone, setPhone] = useState("");
   const [user, setUser] = useState(null);
   const [otp, setOtp] = useState("");
-  const auth = getAuth(); // Initialisation de l'authentification Firebase
 
   const sendOtp = async () => {
     try {
-      // Initialisation de RecaptchaVerifier avec le 'auth'
+      // Initialisation de RecaptchaVerifier avec 'auth'
       window.recaptchaVerifier = new RecaptchaVerifier(
         "recaptcha",
         {
           size: "invisible", // reCAPTCHA invisible
           callback: (response) => {
             // Callback après la validation de reCAPTCHA
-            // Vous pouvez lancer l'envoi de l'OTP ici si nécessaire
           },
         },
         auth
       );
 
       const appVerifier = window.recaptchaVerifier;
-      const confirmation = await signInWithPhoneNumber(
-        auth,
-        phone,
-        appVerifier
-      );
+      const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier);
       setUser(confirmation);
       console.log("OTP envoyé");
     } catch (e) {
@@ -47,9 +37,9 @@ function PhoneSign() {
   const verifyOtp = async () => {
     try {
       const data = await user.confirm(otp);
-      console.log(data);
+      console.log("OTP vérifié avec succès", data);
     } catch (err) {
-      console.error(err);
+      console.error("Erreur lors de la vérification de l'OTP", err);
     }
   };
 
@@ -80,7 +70,7 @@ function PhoneSign() {
         <br />
         <Button
           onClick={verifyOtp}
-          style={{ marginTop: "10px", background: "green" }}
+          style={{ marginTop: "10px", background: "green", color: "white" }}
         >
           Vérifier OTP
         </Button>
