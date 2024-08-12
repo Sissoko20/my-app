@@ -1,82 +1,89 @@
-import React, { useState } from "react";
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
-import { Button } from "antd";
-import TextArea from "antd/es/input/TextArea";
-import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
-import { auth } from './firebase'; // Utilisation de l'importation existante
+import { Button, Card, CardContent, TextField, Typography } from '@mui/material';
+import React, { useState } from 'react'
+import { auth } from './firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
-function PhoneSign() {
-  const [phone, setPhone] = useState("");
-  const [user, setUser] = useState(null);
-  const [otp, setOtp] = useState("");
+const App = () => {
 
-  const sendOtp = async () => {
-    try {
-      // Initialisation de RecaptchaVerifier avec 'auth'
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        "recaptcha",
-        {
-          size: "invisible", // reCAPTCHA invisible
-          callback: (response) => {
-            // Callback après la validation de reCAPTCHA
-          },
-        },
-        auth
-      );
+  const [phone, setPhone] = useState('+91');
+  const [hasFilled, setHasFilled] = useState(false);
+  const [otp, setOtp] = useState('');
 
-      const appVerifier = window.recaptchaVerifier;
-      const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier);
-      setUser(confirmation);
-      console.log("OTP envoyé");
-    } catch (e) {
-      console.error(e);
+  const generateRecaptcha = () => {
+    window.recaptchaVerifier = new RecaptchaVerifier('recaptcha', {
+      'size': 'invisible',
+      'callback': (response) => {
+        // reCAPTCHA solved, allow signInWithPhoneNumber.
+        // ...
+      }
+    }, auth);
+  }
+
+  const handleSend = (event) => {
+    event.preventDefault();
+    setHasFilled(true);
+    generateRecaptcha();
+    let appVerifier = window.recaptchaVerifier;
+    signInWithPhoneNumber(auth, phone, appVerifier)
+      .then((confirmationResult) => {
+        // SMS sent. Prompt user to type the code from the message, then sign the
+        // user in with confirmationResult.confirm(code).
+        window.confirmationResult = confirmationResult;
+      }).catch((error) => {
+        // Error; SMS not sent
+        console.log(error);
+      });
+  }
+  
+  const verifyOtp = (event) => {
+    let otp = event.target.value;
+    setOtp(otp);
+
+    if (otp.length === 6) {
+      // verifu otp
+      let confirmationResult = window.confirmationResult;
+      confirmationResult.confirm(otp).then((result) => {
+        // User signed in successfully.
+        let user = result.user;
+        console.log(user);
+        alert('User signed in successfully');
+        // ...
+      }).catch((error) => {
+        // User couldn't sign in (bad verification code?)
+        // ...
+        alert('User couldn\'t sign in (bad verification code?)');
+      });
     }
-  };
+  }
 
-  const verifyOtp = async () => {
-    try {
-      const data = await user.confirm(otp);
-      console.log("OTP vérifié avec succès", data);
-    } catch (err) {
-      console.error("Erreur lors de la vérification de l'OTP", err);
-    }
-  };
-
-  return (
-    <div className="phone-sign">
-      <div className="phone-content">
-        <PhoneInput
-          country={"ml"}
-          value={phone}
-          onChange={(phone) => setPhone("+" + phone)} // Correction de l'ajout de "+"
-        />
-
-        <Button
-          onClick={sendOtp}
-          style={{ marginTop: "10px", background: "blue", color: "white" }}
-        >
-          Envoyer OTP
-        </Button>
-        <div style={{ marginTop: "10px" }} id="recaptcha"></div>
-
-        <br />
-        <TextArea
-          onChange={(e) => setOtp(e.target.value)}
-          style={{ marginTop: "10px", width: "300px" }}
-          size="small"
-          placeholder="Entrer OTP"
-        />
-        <br />
-        <Button
-          onClick={verifyOtp}
-          style={{ marginTop: "10px", background: "green", color: "white" }}
-        >
-          Vérifier OTP
-        </Button>
+  if(!hasFilled){
+    return (
+      <div className='app__container'>
+        <Card sx={{ width: '300px'}}>
+          <CardContent sx={{ display: 'flex', alignItems: 'center', flexDirection: 'column'}}>
+            <Typography sx={{ padding: '20px'}} variant='h5' component='div'>Enter your phone number</Typography>
+            <form onSubmit={handleSend}>
+              <TextField sx={{ width: '240px'}} variant='outlined' autoComplete='off' label='Phone Number' value={phone} onChange={(event) => setPhone(event.target.value)} />
+              <Button type='submit' variant='contained' sx={{ width: '240px', marginTop: '20px'}}>Send Code</Button>
+            </form>
+          </CardContent>
+        </Card>
+        <div id="recaptcha"></div>
       </div>
-    </div>
-  );
+    ) 
+  } else {
+    return (
+      <div className='app__container'>
+        <Card sx={{ width: '300px'}}>
+          <CardContent sx={{ display: 'flex', alignItems: 'center', flexDirection: 'column'}}>
+            <Typography sx={{ padding: '20px'}} variant='h5' component='div'>Enter the OTP</Typography>
+              <TextField sx={{ width: '240px'}} variant='outlined' label='OTP ' value={otp} onChange={verifyOtp} />
+          </CardContent>
+        </Card>
+        <div id="recaptcha"></div>
+      </div>
+    )
+  }
 }
 
-export default PhoneSign;
+export default App;
